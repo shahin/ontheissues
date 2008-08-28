@@ -134,59 +134,55 @@ def parse_ref(refhtml,position_name,position_body):
 	# return all references found in the ref string
 	return refs_array
 	
-def scrape_positions(htmlarr,numThreads=1):
+def scrape_positions(html,numThreads=1):
 	"""
 	Input: array of html strings
 	Returns: array of dictionaries, [{"position":<string>,"ref":<array of dicts>}, ... ] 
 	"""
-	while htmlarr:
-		html = htmlarr.pop()
-		html = html.replace("\r\n","")
-		posns = html.split('<h3><center>')
-		
-		# get name
-		matchName = re.search("<TITLE> (.+?) on (.+)",posns[0])
-		print matchName.group(1)
-		del posns[0]
-		
-		numPosns = len(posns)
-		
-		req_queue = Queue.Queue()
-		resp_queue = Queue.Queue()
-		names = []
-		reftexts = []
-		kinds = []
-		positions = []
-		bodies = []
+
+	html = html.replace("\r\n","")
+	posns = html.split('<h3><center>')
 	
-		# scrape out position names, reference strings
-		for pos in posns:
-			matchName = re.match("([^<]+)",pos)
-			names.append(matchName.group(1))
-			reftext = re.search('SIZE=1>(.+?)</center></font>',pos)
-			reftexts.append(reftext)
-			body = re.search('</center>(.+?)<center>',pos)
-			try:
-				bodytext = html2text.html2text(body.group(1))
-			except:
-				bodytext = "HTML " + body.group(1)
-			bodies.append(bodytext)
-			
-		# start threads
-		for tid in range(numThreads):
-			Threader(tid,req_queue).start()
+	# get name
+	matchName = re.search("<TITLE> (.+?) on (.+)",posns[0])
+	del posns[0]
 	
-		# enqueue jobs for threads
-		for i in range(numPosns):
-			req_queue.put( (names.pop(),reftexts.pop(),bodies.pop(),resp_queue) )
+	numPosns = len(posns)
+	
+	req_queue = Queue.Queue()
+	resp_queue = Queue.Queue()
+	names = []
+	reftexts = []
+	kinds = []
+	positions = []
+	bodies = []
+
+	# scrape out position names, reference strings
+	for pos in posns:
+		matchName = re.match("([^<]+)",pos)
+		names.append(matchName.group(1))
+		reftext = re.search('SIZE=1>(.+?)</center></font>',pos)
+		reftexts.append(reftext)
+		body = re.search('</center>(.+?)<center>',pos)
+		try:
+			bodytext = html2text.html2text(body.group(1))
+		except:
+			bodytext = "HTML " + body.group(1)
+		bodies.append(bodytext)
 		
-		# enqueue stop signals in threads
-		for i in range(numThreads):
-			req_queue.put(None)
-			
-		# dequeue results into an array
-		for _ in range(numPosns):
-			(name,refs_array,body) = resp_queue.get()
-			positions.append({"position":name,"body":body,"ref": refs_array})
+	# start threads
+	for tid in range(numThreads):
+		Threader(tid,req_queue).start()
+
+	# enqueue jobs for threads
+	for i in range(numPosns):
+		req_queue.put( (names.pop(),reftexts.pop(),bodies.pop(),resp_queue) )
+	
+	# enqueue stop signals in threads
+	for i in range(numThreads):
+		req_queue.put(None)
 		
-		yield positions
+	# dequeue results into an array
+	for _ in range(numPosns):
+		(name,refs_array,body) = resp_queue.get()
+		yield {"position":name,"body":body,"ref": refs_array}
