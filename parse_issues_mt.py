@@ -185,4 +185,4 @@ def scrape_positions(html,numThreads=1):
 	# dequeue results into an array
 	for _ in range(numPosns):
 		(name,refs_array,body) = resp_queue.get()
-		yield {"position":name,"body":body,"ref": refs_array}
+		yield {"position":name,"body":body,"refs": refs_array}
