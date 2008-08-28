@@ -136,7 +136,7 @@ def parse_ref(refhtml,position_name,position_body):
 	
 def scrape_positions(html,numThreads=1):
 	"""
-	Input: array of html strings
+	Input: html string (contents of a position page)
 	Returns: array of dictionaries, [{"position":<string>,"ref":<array of dicts>}, ... ] 
 	"""
 
